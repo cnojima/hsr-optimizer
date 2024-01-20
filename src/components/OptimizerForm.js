@@ -375,19 +375,23 @@ export default function OptimizerForm() {
     }
     let request = allValues
 
-    console.log('Values changed', request, changedValues)
+    console.log('Values changed', request, changedValues);
 
     let relics = Utils.clone(DB.getRelics())
     RelicFilters.calculateWeightScore(request, relics)
 
+    relics = RelicFilters.applyEquippedFilter(request, relics);
     relics = RelicFilters.applyEnhanceFilter(request, relics)
     relics = RelicFilters.applyRankFilter(request, relics)
 
+    // sub-set based on enhance/rank filters
+    // set used in OptimizerForm to display number of permutations
+    // set used in lib/optimizer.js to calculate permutations
+    DB.setFilteredRelics(relics);
     let preFilteredRelicsByPart = RelicFilters.splitRelicsByPart(relics);
 
     relics = RelicFilters.applyMainFilter(request, relics)
     relics = RelicFilters.applySetFilter(request, relics)
-
     relics = RelicFilters.splitRelicsByPart(relics)
     relics = RelicFilters.applyCurrentFilter(request, relics);
     relics = RelicFilters.applyTopFilter(request, relics, preFilteredRelicsByPart);
@@ -408,8 +412,6 @@ export default function OptimizerForm() {
     }
     global.store.getState().setPermutationDetails(permutationDetails)
     global.store.getState().setPermutations(relics.Head.length * relics.Hands.length * relics.Body.length * relics.Feet.length * relics.PlanarSphere.length * relics.LinkRope.length)
-
-    console.log('Filtered relics', relics, permutationDetails)
   }
   window.onOptimizerFormValuesChange = onValuesChange;
 

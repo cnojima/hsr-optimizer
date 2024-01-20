@@ -100,6 +100,7 @@ window.store = create((set) => ({
     subStats: [],
   },
   setRelicTabFilters: (x) => set(() => ({ relicTabFilters: x })),
+  setFilteredRelics: (relics) => set(() => ({ filteredRelics: relics })),
 }))
 
 export const DB = {
@@ -164,6 +165,10 @@ export const DB = {
     relicsById[relic.id] = relic
     global.store.getState().setRelicsById(relicsById)
   },
+  setFilteredRelics: (relics) => {
+    global.store.getState().setFilteredRelics(relics)
+  },
+  getFilteredRelics: () => global.store.getState().filteredRelics,
 
   refreshRelics: () => {
     if (window.setRelicRows) global.setRelicRows(DB.getRelics())

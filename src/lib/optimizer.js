@@ -111,7 +111,7 @@ export const Optimizer = {
       }
     }
 
-    let relics = Utils.clone(DB.getRelics());
+    let relics = Utils.clone(DB.getFilteredRelics());
     RelicFilters.calculateWeightScore(request, relics)
 
     relics = RelicFilters.applyEnhanceFilter(request, relics);

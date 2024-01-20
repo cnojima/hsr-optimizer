@@ -93,6 +93,18 @@ export const RelicFilters = {
     return relics.filter(x => x.enhance >= request.enhance);
   },
 
+  applyEquippedFilter: (request, relics) => {
+    if (request.includeEquippedRelics)
+      return relics;
+
+    let blacklist = [];
+    window.store.getState().characters.forEach(char => {
+      blacklist = blacklist.concat(Object.values(char.equipped));
+    });
+    const ret = relics.filter(x => !blacklist.includes(x.id));
+    return ret;
+  },
+
   applyGradeFilter: (request, relics) => {
     return relics.filter(x => x.grade ? x.grade >= request.grade : true);
   },
