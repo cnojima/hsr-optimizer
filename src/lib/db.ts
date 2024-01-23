@@ -1,0 +1,595 @@
+import { OptimizerTabController } from "./optimizerTabController"
+import { RelicAugmenter } from "./relicAugmenter"
+import * as objectHash from 'object-hash'
+import { create } from 'zustand'
+import { Constants } from './constants.ts';
+import { getDefaultForm } from './defaultForm';
+import { Utils } from "./utils";
+import { SaveState } from "./saveState";
+import { Message } from "./message";
+
+import { HsrOptimizerStore } from "types/store";
+import { HsrDB, Metadata, State } from "types/DB";
+
+
+const state = {
+  relics: [],
+  characters: [],
+  metadata: {},
+  relicsById: {},
+  scorerId: undefined,
+  selectedOptimizerCharacter: undefined
+} as State;
+
+
+
+// TODO clean up
+const hashes = [
+  '#scorer',
+  '#getting-started',
+  '#beta'
+]
+
+
+window.store = create<HsrOptimizerStore>()((set) => ({
+  relicsById: {},
+  setRelicsById: (x) => set(() => ({ relicsById: x })),
+
+  characters: [],
+  charactersById: {},
+  setCharactersById: (x) => set(() => ({ charactersById: x })),
+  setCharacters: (x) => set(() => ({ characters: x })),
+
+  characterTabSelectedId: undefined,
+  setCharacterTabSelectedId: (x) => set(() => ({ characterTabSelectedId: x })),
+
+  characterTabBlur: false,
+  setCharacterTabBlur: (x) => set(() => ({ characterTabBlur: x })),
+
+  permutationDetails: {
+    Head: 0,
+    Hands: 0,
+    Body: 0,
+    Feet: 0,
+    PlanarSphere: 0,
+    LinkRope: 0,
+    HeadTotal: 0,
+    HandsTotal: 0,
+    BodyTotal: 0,
+    FeetTotal: 0,
+    PlanarSphereTotal: 0,
+    LinkRopeTotal: 0,
+  },
+  setPermutationDetails: (x) => set(() => ({ permutationDetails: x })),
+
+  permutations: 0,
+  setPermutations: (x) => set(() => ({ permutations: x })),
+
+  permutationsSearched: 0,
+  setPermutationsSearched: (x) => set(() => ({ permutationsSearched: x })),
+
+  permutationsResults: 0,
+  setPermutationsResults: (x) => set(() => ({ permutationsResults: x })),
+
+  statDisplay: 'base',
+  setStatDisplay: (x) => set(() => ({ statDisplay: x })),
+
+  activeKey: hashes.includes(window.location.hash) ? window.location.hash : 'optimizer',
+  setActiveKey: (x) => set(() => ({ activeKey: x })),
+
+  scorerId: undefined,
+  setScorerId: (x) => set(() => ({ scorerId: x })),
+
+  scoringMetadataOverrides: {},
+  setScoringMetadataOverrides: (x) => set(() => ({ scoringMetadataOverrides: x })),
+
+  conditionalSetEffectsDrawerOpen: false,
+  setConditionalSetEffectsDrawerOpen: (x) => set(() => ({ conditionalSetEffectsDrawerOpen: x })),
+
+  selectedScoringCharacter: undefined,
+  setSelectedScoringCharacter: (x) => set(() => ({ selectedScoringCharacter: x })),
+
+  selectedOptimizerCharacter: undefined,
+  setSelectedOptimizerCharacter: char => set(() => ({ selectedOptimizerCharacter: char })),
+
+  relicTabFilters: {
+    set: [],
+    part: [],
+    enhance: [],
+    mainStats: [],
+    subStats: [],
+  },
+  setRelicTabFilters: (x) => set(() => ({ relicTabFilters: x }))
+}))
+
+export const DB: HsrDB = {
+  getMetadata: (): Metadata => state.metadata,
+  setMetadata: (x: Metadata) => state.metadata = x,
+
+  getCharacters: () => global.store.getState().characters,
+  getCharacterById: (id) => global.store.getState().charactersById[id],
+
+  setCharacters: (x) => {
+    const charactersById = {}
+    for (const character of x) {
+      charactersById[character.id] = character
+    }
+
+    assignRanks(x)
+    global.store.getState().setCharacters(x)
+    global.store.getState().setCharactersById(charactersById)
+  },
+  setCharacter: (x) => {
+    const charactersById = global.store.getState().charactersById
+    charactersById[x.id] = x
+
+    global.store.getState().setCharactersById(charactersById)
+  },
+  addCharacter: (x) => {
+    const characters = DB.getCharacters()
+    characters.push(x);
+    DB.setCharacters(characters);
+  },
+  insertCharacter: (id, index) => {
+    console.log('insert', id, index)
+    const characters = DB.getCharacters()
+    if (index < 0) {
+      index = characters.length
+    }
+    const matchingCharacter = DB.getCharacterById(id)
+    if (!matchingCharacter) return console.warn('No matching character to insert', id, index)
+    const removed = characters.splice(matchingCharacter.rank, 1)
+    characters.splice(index, 0, removed[0])
+    DB.setCharacters(characters)
+  },
+  refreshCharacters: () => {
+    if (window.setCharacterRows) {
+      global.setCharacterRows(DB.getCharacters())
+    }
+  },
+
+  getRelics: () => Object.values(global.store.getState().relicsById),
+  getRelicsById: () => global.store.getState().relicsById,
+  setRelics: (x) => {
+    const relicsById = {}
+    for (const relic of x) {
+      relicsById[relic.id] = relic
+    }
+    global.store.getState().setRelicsById(relicsById)
+  },
+  getRelicById: (id) => global.store.getState().relicsById[id],
+  setRelic: (relic) => {
+    if (!relic.id) return console.warn('No matching relic', relic)
+    const relicsById = global.store.getState().relicsById
+    relicsById[relic.id] = relic
+    global.store.getState().setRelicsById(relicsById)
+  },
+
+  refreshRelics: () => {
+    if (window.setRelicRows) global.setRelicRows(DB.getRelics())
+  },
+
+  // Mostly for debugging
+  getState: () => global.store.getState(),
+
+  getScoringMetadata: (id) => {
+    const defaultScoringMetadata = DB.getMetadata().characters[id].scoringMetadata
+    const scoringMetadataOverrides = global.store.getState().scoringMetadataOverrides[id]
+
+    return scoringMetadataOverrides || defaultScoringMetadata
+  },
+  updateCharacterScoreOverrides: (id, updated) => {
+    const overrides = global.store.getState().scoringMetadataOverrides
+    overrides[id] = updated
+    global.store.getState().setScoringMetadataOverrides(overrides)
+
+    SaveState.save()
+  },
+
+  setStore: (x) => {
+    console.log('Set state', x)
+    const charactersById = {}
+    for (const character of x.characters) {
+      character.equipped = {}
+      charactersById[character.id] = character
+    }
+
+    for (const relic of x.relics) {
+      RelicAugmenter.augment(relic)
+      const char = charactersById[relic.equippedBy]
+      if (char && !char.equipped[relic.part]) {
+        char.equipped[relic.part] = relic.id
+      } else {
+        relic.equippedBy = undefined
+      }
+    }
+
+    global.store.getState().setScorerId(x.scorerId)
+    global.store.getState().setScoringMetadataOverrides(x.scoringMetadataOverrides || {})
+
+    assignRanks(x.characters)
+    DB.setRelics(x.relics)
+    DB.setCharacters(x.characters)
+
+    DB.refreshCharacters()
+    DB.refreshRelics()
+    SaveState.save()
+  },
+  resetStore: () => {
+    DB.setStore({
+      relics: [],
+      characters: []
+    })
+  },
+
+  addFromForm: (form) => {
+    const characters = DB.getCharacters();
+    const found = DB.getCharacterById(form.characterId)
+    if (found) {
+      found.form = {
+        ...found.form,
+        ...form
+      }
+      DB.setCharacters(characters)
+    } else {
+      const defaultForm = getDefaultForm({ id: form.characterId })
+
+      DB.addCharacter({
+        id: form.characterId,
+        form: { ...defaultForm, ...form },
+        equipped: {}
+      })
+    }
+
+    console.log('Updated db characters', characters)
+
+    // TODO: after render optimization, global.characterGrid is possibly undefined
+    if (global.characterGrid?.current?.api)
+      global.characterGrid.current.api.updateGridOptions({ rowData: characters })
+  },
+
+  unequipCharacter: (id) => {
+    const character = DB.getCharacterById(id)
+    if (!character) return console.warn('No character to unequip')
+
+    console.log('Unequipping character', id, character)
+
+    for (const part of Object.values(Constants.Parts)) {
+      const equippedId = character.equipped[part]
+      if (!equippedId) continue
+
+      const relicMatch = DB.getRelicById(equippedId)
+
+      character.equipped[part] = undefined
+
+      if (relicMatch) {
+        relicMatch.equippedBy = undefined
+        DB.setRelic(relicMatch)
+      }
+    }
+    DB.setCharacter(character)
+  },
+
+  removeCharacter: (characterId) => {
+    DB.unequipCharacter(characterId)
+    let characters = DB.getCharacters()
+    characters = characters.filter(x => x.id != characterId)
+    DB.setCharacters(characters)
+  },
+
+  unequipRelicById: (id) => {
+    if (!id) return console.warn('No relic')
+    const relic = DB.getRelicById(id)
+
+    console.log('UNEQUIP RELIC')
+
+    const characters = DB.getCharacters()
+    for (const character of characters) {
+      if (character.equipped && character.equipped[relic.part] && character.equipped[relic.part] == relic.id) {
+        character.equipped[relic.part] = undefined
+      }
+    }
+    DB.setCharacters(characters)
+
+    relic.equippedBy = undefined
+    DB.setRelic(relic)
+  },
+
+  equipRelic: (relic, characterId) => {
+    if (!relic || !relic.id) return console.warn('No relic')
+    if (!characterId) return console.warn('No character')
+    relic = DB.getRelicById(relic.id)
+
+    const prevOwnerId = relic.equippedBy;
+    const character = DB.getCharacters().find(x => x.id == characterId)
+    const prevCharacter = DB.getCharacters().find(x => x.id == prevOwnerId)
+    const prevRelic = DB.getRelicById(character.equipped[relic.part])
+
+    if (prevRelic) {
+      DB.unequipRelicById(prevRelic.id)
+    }
+
+    if (prevRelic && prevCharacter) {
+      prevCharacter.equipped[relic.part] = prevRelic.id
+      prevRelic.equippedBy = prevCharacter.id
+      DB.setCharacter(prevCharacter)
+      DB.setRelic(prevRelic)
+    }
+    else if (prevCharacter) {
+      prevCharacter.equipped[relic.part] = undefined
+      DB.setCharacter(prevCharacter)
+    }
+
+    character.equipped[relic.part] = relic.id
+    relic.equippedBy = character.id
+    DB.setCharacter(character)
+    DB.setRelic(relic)
+  },
+
+  equipRelicIdsToCharacter: (relicIds, characterId) => {
+    if (!characterId) return console.warn('No characterId to equip to')
+    console.log('Equipping relics to character', relicIds, characterId)
+
+    for (const relicId of relicIds) {
+      DB.equipRelic({ id: relicId }, characterId)
+    }
+  },
+
+  deleteRelic: (id) => {
+    if (!id) return Message.error('Unable to delete relic')
+    DB.unequipRelicById(id)
+    const relicsById = global.store.getState().relicsById
+    delete relicsById[id]
+    global.store.getState().setRelicsById(relicsById)
+    global.characterGrid.current.api.redrawRows()
+  },
+
+  // These relics are missing speed decimals from OCR importer
+  // We overwrite any existing relics with imported ones
+  mergeRelicsWithState: (newRelics, newCharacters) => {
+    const oldRelics = DB.getRelics()
+    newRelics = Utils.clone(newRelics)
+    newCharacters = Utils.clone(newCharacters)
+
+    console.log('Merging relics', newRelics, newCharacters)
+
+    // Add new characters
+    if (newCharacters) {
+      for (const character of newCharacters) {
+        DB.addFromForm(character)
+      }
+    }
+
+    const characters = DB.getCharacters()
+
+    // Generate a hash of existing relics for easy lookup
+    const oldRelicHashes = {}
+    for (const oldRelic of oldRelics) {
+      const hash = hashRelic(oldRelic)
+      oldRelicHashes[hash] = oldRelic;
+    }
+
+    const replacementRelics = []
+    for (let newRelic of newRelics) {
+      const hash = hashRelic(newRelic)
+
+      // Compare new relic hashes to old relic hashes
+      const found = oldRelicHashes[hash]
+      let stableRelicId
+      if (found) {
+        if (newRelic.equippedBy && newCharacters) {
+          // Update the owner of the existing relic with the newly imported owner
+          found.equippedBy = newRelic.equippedBy
+          newRelic = found
+        }
+
+        // Save the old relic because it may have edited speed values, delete the hash to prevent duplicates
+        replacementRelics.push(found)
+        stableRelicId = found.id
+        delete oldRelicHashes[hash]
+      } else {
+        // No match found - save the new relic
+        stableRelicId = newRelic.id
+        replacementRelics.push(newRelic)
+      }
+
+      // Update the character's equipped inventory
+      if (newRelic.equippedBy && newCharacters) {
+        const character = characters.find(x => x.id == newRelic.equippedBy)
+        if (character) {
+          character.equipped[newRelic.part] = stableRelicId
+        } else {
+          console.error('No character to equip relic to', newRelic)
+        }
+      }
+    }
+
+    console.log('Replacement relics', replacementRelics)
+
+    DB.setRelics(replacementRelics);
+
+    // Clean up any deleted relic ids that are still equipped
+    for (const character of characters) {
+      for (const part of Object.values(Constants.Parts)) {
+        if (character.equipped && character.equipped[part] && !DB.getRelicById(character.equipped[part])) {
+          character.equipped[part] = undefined
+        }
+      }
+    }
+
+    // Clean up relics that are double equipped
+    for (const relic of DB.getRelics()) {
+      if (!relic.equippedBy) continue
+
+      const character = DB.getCharacterById(relic.equippedBy)
+      if (!character || character.equipped[relic.part] != relic.id) {
+        relic.equippedBy = undefined
+      }
+    }
+
+    DB.setRelics(replacementRelics)
+    DB.setCharacters(characters)
+
+    global.relicsGrid.current.api.updateGridOptions({ rowData: replacementRelics })
+
+    global.characterGrid.current.api.redrawRows()
+
+    // TODO this probably shouldn't be in this file
+    const fieldValues = OptimizerTabController.getForm()
+    global.onOptimizerFormValuesChange({}, fieldValues);
+  },
+
+  // These relics have accurate speed values from relic scorer import
+  // We keep the existing set of relics and only overwrite ones that match the ones that match an imported one
+  mergeVerifiedRelicsWithState: (newRelics) => {
+    const oldRelics = Utils.clone(DB.getRelics())
+    newRelics = Utils.clone(newRelics)
+
+    // part set grade mainstat substatStats
+    const oldRelicPartialHashes = {}
+    for (const oldRelic of oldRelics) {
+      const hash = partialHashRelic(oldRelic)
+      if (!oldRelicPartialHashes[hash]) oldRelicPartialHashes[hash] = []
+      oldRelicPartialHashes[hash].push(oldRelic);
+    }
+
+    // Tracking these for debug / logging
+    const updatedOldRelics = []
+    const addedNewRelics = []
+
+    for (const newRelic of newRelics) {
+      newRelic.equippedBy = undefined
+      const partialHash = partialHashRelic(newRelic)
+      const partialMatches = oldRelicPartialHashes[partialHash] || []
+
+      let match
+      for (const partialMatch of partialMatches) {
+        if (newRelic.enhance < partialMatch.enhance) continue
+        if (newRelic.substats.length < partialMatch.substats.length) continue
+
+        let exit = false
+        let upgrades = 0
+        for (let i = 0; i < partialMatch.substats.length; i++) {
+          const matchSubstat = partialMatch.substats[i]
+          const newSubstat = newRelic.substats[i]
+
+          // Different substats mean different relics - break
+          if (matchSubstat.stat != newSubstat.stat) { exit = true; break }
+          if (compareSameTypeSubstat(matchSubstat, newSubstat) == -1) { exit = true; break }
+
+          // Track if the number of stat increases make sense
+          if (compareSameTypeSubstat(matchSubstat, newSubstat) == 1) {
+            upgrades++
+          }
+        }
+
+        if (exit) continue
+
+        const possibleUpgrades = Math.round((Math.floor(newRelic.enhance / 3) * 3 - Math.floor(partialMatch.enhance / 3) * 3) / 3) // + (newRelic.substats.length > partialMatch.substats.length ? 1 : 0)
+        if (upgrades > possibleUpgrades) continue
+
+        // If it passes all the tests, keep it
+        match = partialMatch
+        break
+      }
+
+      if (match) {
+        match.substats = newRelic.substats
+        match.main = newRelic.main
+        match.enhance = newRelic.enhance
+
+        match.verified = true
+        updatedOldRelics.push(match)
+      } else {
+        oldRelics.push(newRelic)
+
+        newRelic.verified = true
+        addedNewRelics.push(newRelic)
+      }
+    }
+
+    console.warn('addedNewRelics', addedNewRelics)
+    console.warn('updatedOldRelics', updatedOldRelics)
+
+    oldRelics.map(x => RelicAugmenter.augment(x))
+    DB.setRelics(oldRelics)
+    DB.refreshRelics()
+
+    if (global.characterGrid?.current?.api) {
+      global.characterGrid.current.api.redrawRows()
+    }
+
+    if (updatedOldRelics.length) Message.success(`Updated stats for ${updatedOldRelics.length} existing relics`, 8)
+    if (addedNewRelics.length) Message.success(`Added ${addedNewRelics.length} new relics`, 8)
+  },
+};
+
+export default DB;
+
+function assignRanks(characters) {
+  for (let i = 0; i < characters.length; i++) {
+    characters[i].rank = i
+  }
+
+  return characters;
+}
+
+function hashRelic(relic) {
+  const substatValues = []
+  const substatStats = []
+
+  for (const substat of relic.substats) {
+    if (Utils.isFlat(substat.stat)) {
+      // Flat atk/def/hp/spd values we floor to an int
+      substatValues.push(Math.floor(substat.value))
+    } else {
+      // Other values we match to 1 decimal point due to OCR
+      substatValues.push(Utils.precisionRound(Utils.truncate10ths(substat.value)))
+    }
+    substatStats.push(substat.stat)
+  }
+  const hashObject = {
+    part: relic.part,
+    set: relic.set,
+    grade: relic.grade,
+    enhance: relic.enhance,
+    mainstat: relic.main.stat,
+    mainvalue: Math.floor(relic.main.value),
+    substatValues: substatValues, // Match to 1 decimal point
+    substatStats: substatStats,
+  }
+  return objectHash(hashObject)
+}
+
+// -1: old > new, 0: old == new, 1, new > old
+function compareSameTypeSubstat(oldSubstat, newSubstat) {
+  let oldValue
+  let newValue
+  if (Utils.isFlat(oldSubstat.stat)) {
+    // Flat atk/def/hp/spd values we floor to an int
+    oldValue = Math.floor(oldSubstat.value)
+    newValue = Math.floor(newSubstat.value)
+  } else {
+    // Other values we match to 1 decimal point due to OCR
+    oldValue = Utils.precisionRound(Utils.truncate10ths(oldSubstat.value))
+    newValue = Utils.precisionRound(Utils.truncate10ths(newSubstat.value))
+  }
+
+  if (oldValue == newValue) return 0
+  if (oldValue < newValue) return 1
+  return -1
+}
+
+function partialHashRelic(relic) {
+  const baseSubstatCount = relic.grade == 5 ? 3 : 2
+
+  const hashObject = {
+    part: relic.part,
+    set: relic.set,
+    grade: relic.grade,
+    mainstat: relic.main.stat,
+    substatStats: relic.substats.slice(0, baseSubstatCount).map(x => x.stat)
+  }
+
+  return objectHash(hashObject)
+}

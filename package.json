@@ -27,13 +27,14 @@
     "zustand": "^4.4.7"
   },
   "scripts": {
-    "start": "set PORT=3210 && react-scripts start",
     "build": "react-scripts build",
-    "lint": "eslint src/**/*.js",
-    "test": "react-scripts test",
+    "deploy": "gh-pages -d build",
     "eject": "react-scripts eject",
+    "lint": "eslint src/**/*.ts src/**/*.tsx src/**/*.js",
     "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "start": "set PORT=3210 && react-scripts start",
+    "test": "react-scripts test",
+    "typecheck": "tsc --noEmit"
   },
   "eslintConfig": {
     "extends": [

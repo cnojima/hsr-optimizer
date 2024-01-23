@@ -22,7 +22,8 @@ export const Stats = {
   SPD: 'SPD',
   Wind_DMG: 'Wind DMG Boost'
 };
-export type Stats = typeof Stats[keyof typeof Stats];
+export type StatsKeys = [keyof typeof Stats] | string[];
+export type StatsValues = typeof Stats[keyof typeof Stats];
 
 export const MainStats = [
   Stats.HP_P,
@@ -124,7 +125,7 @@ export const Parts = {
   PlanarSphere: 'PlanarSphere',
   LinkRope: 'LinkRope'
 };
-export type Parts = typeof Parts[keyof typeof Parts];
+export type Parts = keyof typeof Parts;
 
 export const PartsToReadable = {
   [Parts.Head]: 'Head',
