@@ -1,9 +1,17 @@
 import { Parts, SetsOrnaments, SetsRelics, StatsValues } from "lib/constants";
-import { AssetRelativeUrl, CharacterId, Element, ExternalPath, InternalPath, Promotions, Rarity } from "types/Common";
+import {
+  GUID,
+  AssetRelativeUrl,
+  Element,
+  ExternalPath,
+  InternalPath,
+  Promotions,
+  Rarity
+} from "types/Common";
 
+export type CharacterId = string; // "1004"
 
-
-
+export type Eidolon = 0 | 1 | 2 | 3 | 4 | 5 | 6;
 
 export type Traces = {
   [key in StatsValues]: number;
@@ -32,4 +40,14 @@ export type MetadataCharacter = {
     ornamentSets: SetsOrnaments[],
     characterId: CharacterId,
   };
+};
+
+// store.getState().characters[0]
+export type Character = {
+  id: CharacterId;
+  equipped: {
+    [key in Parts]: GUID;
+  };
+  form: Form;
+  rank: number; // order in character tab
 };

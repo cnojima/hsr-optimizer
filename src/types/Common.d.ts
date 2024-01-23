@@ -1,7 +1,8 @@
 export type GUID = string; // TODO: match to GUID format
-export type CharacterId = string; // "1004"
+
 export type HoyoverseId = number; // 600015194
-export type Rarity = 1 | 2 | 3 | 4 | 5;
+export type Rarity = 2 | 3 | 4 | 5;
+
 export type AssetRelativeUrl = string;
 
 export type PathMap = {

@@ -1,7 +1,7 @@
 import { Relic, RelicEnhance } from "types/Relic";
 import { RelicSet } from "./RelicSet";
 import { MainStats, Parts, SubStats } from "lib/constants";
-import { Character } from "./Character";
+import { Character } from "types/Character";
 import { HoyoverseId, CharacterId } from "./Common";
 
 

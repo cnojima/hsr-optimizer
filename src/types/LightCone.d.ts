@@ -1,0 +1,1 @@
+export type SuperImpositionLevel = 1 | 2 | 3 | 4 | 5;

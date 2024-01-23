@@ -89,7 +89,7 @@ export type LightCone = {
     [level: number]: LightConePromotion
   };
   superimpositions: {
-    [s: number]: {
+    [superimp: number]: {
       [key in StatsValues]: number
     }
   };
