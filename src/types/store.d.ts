@@ -6,7 +6,7 @@ import { HoyoverseId, CharacterId } from "./Common";
 
 
 type PermutationDetails = {
-  [K in keyof Parts]: number;
+  [K in Parts]: number;
 } & {
   HeadTotal: number;
   HandsTotal: number;
@@ -41,20 +41,7 @@ export interface HsrOptimizerStore {
   characterTabBlur: boolean;
   setCharacterTabBlur: (x: boolean) => void;
 
-  permutationDetails: {
-    Head: number;
-    Hands: number;
-    Body: number;
-    Feet: number;
-    PlanarSphere: number;
-    LinkRope: number;
-    HeadTotal: number;
-    HandsTotal: number;
-    BodyTotal: number;
-    FeetTotal: number;
-    PlanarSphereTotal: number;
-    LinkRopeTotal: number;
-  };
+  permutationDetails: PermutationDetails;
   setPermutationDetails: (x: PermutationDetails) => void;
 
   permutations: number;

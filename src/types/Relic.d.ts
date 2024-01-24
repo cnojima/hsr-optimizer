@@ -41,3 +41,4 @@ export type RelicBody = {
     stat: (typeof Stats)[StatsValues];
   }
 } & Relic;
+

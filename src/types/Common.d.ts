@@ -28,12 +28,12 @@ export type Element =
 
 
 export type Promotion = {
-  "HP": number;
-  "ATK": number;
-  "CRIT Rate": number;
-  "CRIT DMG": number;
-  "DEF": number;
-  "SPD": number;
+  "HP"?: number;
+  "ATK"?: number;
+  "CRIT Rate"?: number;
+  "CRIT DMG"?: number;
+  "DEF"?: number;
+  "SPD"?: number;
 };
 
 export type Promotions = {

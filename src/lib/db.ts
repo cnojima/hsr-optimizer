@@ -8,8 +8,9 @@ import { Utils } from "./utils";
 import { SaveState } from "./saveState";
 import { Message } from "./message";
 
-import { HsrOptimizerStore } from "types/store";
-import { HsrDB, Metadata, State } from "types/DB";
+import { HsrOptimizerStore, PermutationDetails } from "types/store";
+import { HsrDB, State } from "types/DB";
+import { Metadata } from "types/DB.metadata";
 
 
 const state = {
@@ -60,7 +61,7 @@ window.store = create<HsrOptimizerStore>()((set) => ({
     PlanarSphereTotal: 0,
     LinkRopeTotal: 0,
   },
-  setPermutationDetails: (x) => set(() => ({ permutationDetails: x })),
+  setPermutationDetails: (details) => set(() => ({ permutationDetails: details })),
 
   permutations: 0,
   setPermutations: (x) => set(() => ({ permutations: x })),
@@ -101,6 +102,16 @@ window.store = create<HsrOptimizerStore>()((set) => ({
   },
   setRelicTabFilters: (x) => set(() => ({ relicTabFilters: x }))
 }))
+
+
+
+
+
+
+
+
+
+
 
 export const DB: HsrDB = {
   getMetadata: (): Metadata => state.metadata,
